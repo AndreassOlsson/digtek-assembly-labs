@@ -1,45 +1,44 @@
-# Initialize registers
-addi x1, x0, 0    # x1 will store our lion count
-addi x2, x0, 9    # x2 holds max lion count (9)
-addi x3, x0, 0    # x3 will store our previous state
-addi x4, x0, 12   # x4 holds mask for lion sensors (1100 in binary)
+    # Assuming JA is stored in x31 (8-bit data)
+    andi x11, x31, 0x04   # Extract D2 (Lion in front of G1) into x11 (0x04 = 00000100)
+    andi x12, x31, 0x08   # Extract D3 (Lion in front of G2) into x12 (0x08 = 00001000)
 
-# Main loop
-main_loop:
-    add x30, x0, x1   # Display current lion count on 7-segment (assuming x30 is output)
+    # Check if both G1 and G2 have lions in front of them
+    bnez x11, check_g2    # If D2 is 1, jump to check_g2 (G1 has lion)
+    j idle_state          # If D2 is 0, jump to idle state (no lion in front of G1)
 
-    # Read input from JA (assuming it's mapped to x31)
-    andi x5, x31, 12  # x5 holds current state of sensors (bits D2 and D3)
-    
-    # State machine logic
-    slli x6, x3, 2    # Shift previous state left by 2
-    or x6, x6, x5     # Combine with current state
-    
-    # Check for lion going out
-    addi x7, x0, 52   # 52 = 00110100 (sequence for lion going out)
-    beq x6, x7, lion_out
-    
-    # Check for lion going in
-    addi x7, x0, 38   # 38 = 00100110 (sequence for lion going in)
-    beq x6, x7, lion_in
-    
-    beq x0, x0, update_state  # If no match, just update state
+check_g2:
+    bnez x12, decision_state  # If D3 is 1, jump to decision state (G2 has lion)
 
-lion_out:
-    bge x1, x2, update_state  # If at max, don't increment
-    addi x1, x1, 1            # Increment lion count
-    beq x0, x0, update_state
+    # If D3 is 0 (no lion in front of G2), jump to idle state (exit decision state)
+    j idle_state
 
-lion_in:
-    beq x1, x0, update_state  # If at 0, don't decrement
-    addi x1, x1, -1           # Decrement lion count
+decision_state:
+    # Loop and monitor G1 and G2 until either sensor stops being true
+    loop:
+        # Check if both G1 and G2 have lions (both D2 and D3 are 1)
+        andi x11, x31, 0x04   # Extract D2 (Lion in front of G1) into x11
+        andi x12, x31, 0x08   # Extract D3 (Lion in front of G2) into x12
+        
+        bnez x11, check_g2_in_decision  # If D2 is 1, check D3 (G1 has lion)
+        j decrement_counter          # If D2 is 0, decrement counter (G1 no longer has lion)
 
-update_state:
-    add x3, x0, x5    # Update previous state
+check_g2_in_decision:
+        bnez x12, loop_continue     # If D3 is 1, continue the loop (G2 has lion)
+        j increment_counter         # If D3 is 0, increment counter (G2 no longer has lion)
 
-    # Set "Fara" signal (danger light)
-    addi x30, x0, 0   # Clear x30
-    beq x1, x0, main_loop  # If lion count is 0, no danger
-    ori x30, x30, 128  # Set MSB of x30 to indicate danger
+loop_continue:
+        j loop  # Continue the loop as both lions are in front of G1 and G2
 
-    beq x0, x0, main_loop  # Loop back to start
+decrement_counter:
+        # Decrement the counter (assuming x30 is the counter)
+        addi x30, x30, -1
+        j idle_state  # Exit decision state and go to idle state
+
+increment_counter:
+        # Increment the counter (assuming x30 is the counter)
+        addi x30, x30, 1
+        j idle_state  # Exit decision state and go to idle state
+
+idle_state:
+        # Code for idle state, where nothing happens
+        j idle_state  # Infinite loop, stays in idle state
