@@ -1,5 +1,5 @@
 addi x1, x0, 1 # D0 = 00000001, D0 to 7 segment
-addi x1, x0, 2 # D1 = 00000010, D1 to 7 segment
+# addi x2, x0, 2 # D1 = 00000010, D1 to 7 segment
 addi x3, x0, 4 # D2 = 00000100, D2 to 7 segment AND Lion in front of G1
 addi x4, x0, 8 # D3 = 00001000, D3 to 7 segment AND Lion in front of G2
 
